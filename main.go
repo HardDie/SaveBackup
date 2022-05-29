@@ -9,6 +9,7 @@ import (
 
 type Watcher struct {
 	w *fsnotify.Watcher
+	b Backup
 }
 
 func NewWatcher() *Watcher {
@@ -18,6 +19,7 @@ func NewWatcher() *Watcher {
 	}
 	return &Watcher{
 		w: w,
+		b: NewBackup("/tmp/mytmp/save", "witcher"),
 	}
 }
 
@@ -29,6 +31,7 @@ func (w *Watcher) Close() {
 }
 
 func (w *Watcher) process() {
+	previousRename := ""
 	for {
 		select {
 		case ev, ok := <-w.w.Events:
@@ -41,12 +44,36 @@ func (w *Watcher) process() {
 
 			switch {
 			case ev.Op&fsnotify.Create != 0:
+				if previousRename != "" {
+					err := w.b.Rename(previousRename, ev.Name)
+					previousRename = ""
+					if err != nil {
+						log.Println("Error backup file:", err.Error())
+					}
+				} else {
+					err := w.b.Create(ev.Name)
+					if err != nil {
+						log.Println("Error backup file:", err.Error())
+					}
+				}
 				if isDirectory(ev.Name) {
 					err := w.w.Add(ev.Name)
 					if err != nil {
 						log.Println("Error add folder into watcher:", err.Error())
 					}
 				}
+			case ev.Op&fsnotify.Write != 0:
+				err := w.b.Changes(ev.Name)
+				if err != nil {
+					log.Println("Error backup file:", err.Error())
+				}
+			case ev.Op&fsnotify.Remove != 0:
+				err := w.b.Delete(ev.Name)
+				if err != nil {
+					log.Println("Error backup file:", err.Error())
+				}
+			case ev.Op&fsnotify.Rename != 0:
+				previousRename = ev.Name
 			}
 
 		case err, ok := <-w.w.Errors:
@@ -77,13 +104,18 @@ func main() {
 	watcher := NewWatcher()
 	defer watcher.Close()
 
-	// Run main process
-	go watcher.process()
-
-	err := watcher.w.Add("/tmp/mytmp/save")
+	err := watcher.b.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = watcher.w.Add("/tmp/mytmp/save")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Run main process
+	go watcher.process()
 
 	// Wait forever
 	done := make(chan bool)
