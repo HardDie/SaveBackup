@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -42,4 +43,16 @@ func CreateFolder(path string) error {
 
 func GetTimestamp() string {
 	return strings.ReplaceAll(time.Now().Format("2006_01_02__15_04_05.999999999"), ".", "__")
+}
+
+func IsDirectory(path string) bool {
+	stat, err := os.Stat(path)
+	if err != nil {
+		log.Println("Check dir error:", err.Error())
+		return false
+	}
+	if !stat.IsDir() {
+		return false
+	}
+	return true
 }

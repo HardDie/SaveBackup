@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -19,18 +18,16 @@ func NewWatcher() *Watcher {
 	}
 	return &Watcher{
 		w: w,
-		b: NewBackup("/tmp/mytmp/save", "witcher"),
+		b: NewBackup(GetConfig().Track, GetConfig().Name),
 	}
 }
-
 func (w *Watcher) Close() {
 	err := w.w.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
 }
-
-func (w *Watcher) process() {
+func (w *Watcher) Process() {
 	previousRename := ""
 	for {
 		select {
@@ -56,7 +53,7 @@ func (w *Watcher) process() {
 						log.Println("Error backup file:", err.Error())
 					}
 				}
-				if isDirectory(ev.Name) {
+				if IsDirectory(ev.Name) {
 					err := w.w.Add(ev.Name)
 					if err != nil {
 						log.Println("Error add folder into watcher:", err.Error())
@@ -86,36 +83,29 @@ func (w *Watcher) process() {
 	}
 }
 
-func isDirectory(path string) bool {
-	stat, err := os.Stat(path)
-	if err != nil {
-		log.Println("Check dir error:", err.Error())
-		return false
-	}
-	if !stat.IsDir() {
-		return false
-	}
-	return true
-}
-
 func main() {
 	log.SetFlags(log.Lshortfile)
 
-	watcher := NewWatcher()
-	defer watcher.Close()
-
-	err := watcher.b.Init()
+	err := InitConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = watcher.w.Add("/tmp/mytmp/save")
+	watcher := NewWatcher()
+	defer watcher.Close()
+
+	err = watcher.b.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = watcher.w.Add(GetConfig().Track)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Run main process
-	go watcher.process()
+	go watcher.Process()
 
 	// Wait forever
 	done := make(chan bool)

@@ -2,16 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/plus3it/gorecurcopy"
 	_ "github.com/plus3it/gorecurcopy"
-)
-
-const (
-	BackupDirectory = "/tmp/mytmp/backup"
 )
 
 type Backup struct {
@@ -34,7 +29,7 @@ func NewBackup(path, name string) Backup {
 }
 
 func (b Backup) Init() error {
-	backupPath := filepath.Join(BackupDirectory, b.Name)
+	backupPath := filepath.Join(GetConfig().BackupDirectory, b.Name)
 	isExist, err := IsFolderExist(backupPath)
 	if err != nil {
 		return err
@@ -53,7 +48,7 @@ func (b Backup) Init() error {
 }
 func (b Backup) Copy() error {
 	srcPath := filepath.Join(b.Path, b.Object)
-	backupPath := filepath.Join(BackupDirectory, b.Name, GetTimestamp())
+	backupPath := filepath.Join(GetConfig().BackupDirectory, b.Name, GetTimestamp())
 	err := CreateFolder(backupPath)
 	if err != nil {
 		return err
@@ -75,7 +70,7 @@ func (b Backup) Changes(file string) error {
 	dirPath := filepath.Dir(changedFile)
 	fileName := filepath.Base(changedFile)
 
-	backupPath := filepath.Join(BackupDirectory, b.Name, GetTimestamp())
+	backupPath := filepath.Join(GetConfig().BackupDirectory, b.Name, GetTimestamp())
 	if dirPath != "." {
 		backupPath = filepath.Join(backupPath, dirPath)
 	}
@@ -99,7 +94,7 @@ func (b Backup) Delete(file string) error {
 		return err
 	}
 
-	backupPath := filepath.Join(BackupDirectory, b.Name, GetTimestamp()+".json")
+	backupPath := filepath.Join(GetConfig().BackupDirectory, b.Name, GetTimestamp()+".json")
 	f, err := os.Create(backupPath)
 	if err != nil {
 		return err
@@ -119,7 +114,6 @@ func (b Backup) Delete(file string) error {
 	return nil
 }
 func (b Backup) Rename(fileOld, fileNew string) error {
-	log.Println("Rename:", fileOld, fileNew)
 	srcPath := filepath.Join(b.Path, b.Object)
 
 	changedOldFile, err := filepath.Rel(srcPath, fileOld)
@@ -131,7 +125,7 @@ func (b Backup) Rename(fileOld, fileNew string) error {
 		return err
 	}
 
-	backupPath := filepath.Join(BackupDirectory, b.Name, GetTimestamp()+".json")
+	backupPath := filepath.Join(GetConfig().BackupDirectory, b.Name, GetTimestamp()+".json")
 	f, err := os.Create(backupPath)
 	if err != nil {
 		return err
@@ -158,7 +152,7 @@ func (b Backup) Create(file string) error {
 		return err
 	}
 
-	backupPath := filepath.Join(BackupDirectory, b.Name, GetTimestamp()+".json")
+	backupPath := filepath.Join(GetConfig().BackupDirectory, b.Name, GetTimestamp()+".json")
 	f, err := os.Create(backupPath)
 	if err != nil {
 		return err
